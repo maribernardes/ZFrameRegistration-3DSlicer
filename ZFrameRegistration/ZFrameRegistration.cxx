@@ -5,8 +5,8 @@
 
 #include "itkPluginUtilities.h"
 
-#include "Calibration.h"
-#include <ZFrameCalibrationCLP.h>
+#include "Registration.h"
+#include <ZFrameRegistrationCLP.h>
 
 
 using namespace std;
@@ -113,19 +113,19 @@ int main( int argc, char * argv[] )
     float Zorientation[4];
     
     // Call Z-frame registration
-    zf::Calibration * calibration;
-    calibration = new zf::Calibration();
+    zf::Registration * registration;
+    registration = new zf::Registration();
     
     int dim[3];
     dim[0] = dimensions[0];
     dim[1] = dimensions[1];
     dim[2] = dimensions[2];
     
-    calibration->SetInputImage(image->GetBufferPointer(), dim, imageTransform);
-    calibration->SetOrientationBase(ZquaternionBase);
-    int r = calibration->Register(range, Zposition, Zorientation);
+    registration->SetInputImage(image->GetBufferPointer(), dim, imageTransform);
+    registration->SetOrientationBase(ZquaternionBase);
+    int r = registration->Register(range, Zposition, Zorientation);
     
-    delete calibration;
+    delete registration;
     
     cout << r << endl;
     

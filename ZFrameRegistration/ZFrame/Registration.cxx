@@ -5,7 +5,7 @@
   See Doc/copyright/copyright.txt
   or http://www.slicer.org/copyright/copyright.txt for details.
 
-  Program:   ZFrame Calibration
+  Program:   ZFrame Registration
   Module:    $HeadURL: http://svn.slicer.org/Slicer3/trunk/Modules/OpenIGTLinkIF/vtkIGTLToMRMLBase.h $
   Date:      $Date: 2009-01-05 13:28:20 -0500 (Mon, 05 Jan 2009) $
   Version:   $Revision: 8267 $
@@ -16,7 +16,7 @@
 #include <sstream>
 #include <fstream>
 
-#include "Calibration.h"
+#include "Registration.h"
 
 #define MEPSILON        (1e-10)
 #ifndef M_PI
@@ -166,7 +166,7 @@ void IdentityMatrix(Matrix4x4 &matrix)
 
 
 //----------------------------------------------------------------------------
-Calibration::Calibration()
+Registration::Registration()
 {
   this->InputImage = NULL;
   IdentityMatrix(this->InputImageTrans);
@@ -177,12 +177,12 @@ Calibration::Calibration()
 }
 
 
-Calibration::~Calibration()
+Registration::~Registration()
 {
 }
 
 
-int Calibration::SetInputImage(short* inputImage, int dimensions[3], Matrix4x4& transform)
+int Registration::SetInputImage(short* inputImage, int dimensions[3], Matrix4x4& transform)
 {
 
   this->InputImage = inputImage;
@@ -193,14 +193,14 @@ int Calibration::SetInputImage(short* inputImage, int dimensions[3], Matrix4x4& 
 }
 
 
-int Calibration::SetOrientationBase(float orientation[4])
+int Registration::SetOrientationBase(float orientation[4])
 {
   memcpy (this->ZOrientationBase, orientation, sizeof (float) * 4);
   return 1;
 }
 
 
-int Calibration::Register(int range[2], float Zposition[3], float Zorientation[4])
+int Registration::Register(int range[2], float Zposition[3], float Zorientation[4])
 {
 
   int xsize = this->InputImageDim[0];
@@ -469,7 +469,7 @@ int Calibration::Register(int range[2], float Zposition[3], float Zorientation[4
 }
 
 
-void Calibration::Init(int xsize, int ysize)
+void Registration::Init(int xsize, int ysize)
 {
   int i,j,m,n;
 
@@ -548,7 +548,7 @@ void Calibration::Init(int xsize, int ysize)
 }
 
 
-int Calibration::RegisterQuaternion(float position[3], float quaternion[4],
+int Registration::RegisterQuaternion(float position[3], float quaternion[4],
                                                     float ZquaternionBase[4],
                                                     Matrix& SourceImage, int dimension[3], float spacing[3])
 {
@@ -665,7 +665,7 @@ int Calibration::RegisterQuaternion(float position[3], float quaternion[4],
  * @param Zcoordinates[][] The resulting list of seven fiducial coordinates.
 
 */
-bool Calibration::LocateFiducials(Matrix &SourceImage, int xsize,
+bool Registration::LocateFiducials(Matrix &SourceImage, int xsize,
                   int ysize, int Zcoordinates[7][2], float tZcoordinates[7][2])
 {
   int    i,j;
@@ -766,7 +766,7 @@ bool Calibration::LocateFiducials(Matrix &SourceImage, int xsize,
     // Check that this is a local maximum.
     if(peakval<MEPSILON)
     {
-    std::cerr << "Calibration::OrderFidPoints - peak value is zero." << std::endl;
+    std::cerr << "Registration::OrderFidPoints - peak value is zero." << std::endl;
       return(false);
     }
     else
@@ -779,7 +779,7 @@ bool Calibration::LocateFiducials(Matrix &SourceImage, int xsize,
         {
            // Ignore coordinate if the offpeak value is within 30% of the peak.
            i--;
-           std::cerr << "Calibration::LocateFiducials - Bad Peak." << std::endl;
+           std::cerr << "Registration::LocateFiducials - Bad Peak." << std::endl;
            if(++peakcount > 10)
              return(false);
         }
@@ -833,7 +833,7 @@ bool Calibration::LocateFiducials(Matrix &SourceImage, int xsize,
  * @param tZcoordinate[] A fiducial coordinate computed to sub-pixel accuracy.
  */
 
-void Calibration::FindSubPixelPeak(int Zcoordinate[2],
+void Registration::FindSubPixelPeak(int Zcoordinate[2],
                                          float tZcoordinate[2],
                                          Real Y0, Real Yx1, Real Yx2, Real Yy1, Real Yy2)
 {
@@ -847,7 +847,7 @@ void Calibration::FindSubPixelPeak(int Zcoordinate[2],
 
   if(fabs(Xshift)>1.0 || fabs(Yshift)>1.0)
   {
-  std::cerr << "Calibration::FindSubPixelPeak - subpixel peak out of range." << std::endl;
+  std::cerr << "Registration::FindSubPixelPeak - subpixel peak out of range." << std::endl;
     tZcoordinate[0] = (float)(Zcoordinate[0]);
     tZcoordinate[1] = (float)(Zcoordinate[1]);
   }
@@ -867,7 +867,7 @@ void Calibration::FindSubPixelPeak(int Zcoordinate[2],
  * @param ysize The height of the image in pixels.
  * @return true if the point geometry is ok, else false.
  */
-bool Calibration::CheckFiducialGeometry(int Zcoordinates[7][2], int xsize, int ysize)
+bool Registration::CheckFiducialGeometry(int Zcoordinates[7][2], int xsize, int ysize)
 {
   Column2Vector  P1, P3, P5, P7;
   Column2Vector  D71, D53, D13, D75;
@@ -880,7 +880,7 @@ bool Calibration::CheckFiducialGeometry(int Zcoordinates[7][2], int xsize, int y
     if(Zcoordinates[i][0]<0 || Zcoordinates[i][0]>=ysize ||
        Zcoordinates[i][1]<0 || Zcoordinates[i][1]>=xsize)
     {
-    std::cerr << "Calibration::onEventGenerated - fiducial coordinates out of range. No frame lock on this image." << std::endl;
+    std::cerr << "Registration::onEventGenerated - fiducial coordinates out of range. No frame lock on this image." << std::endl;
       return(false);
     }
   }
@@ -921,7 +921,7 @@ bool Calibration::CheckFiducialGeometry(int Zcoordinates[7][2], int xsize, int y
  * @param rmid Row coordinate at centre.
  * @param cmid Column coordinate at centre.
  */
-void Calibration::FindFidCentre(float points[7][2], float &rmid, float &cmid)
+void Registration::FindFidCentre(float points[7][2], float &rmid, float &cmid)
 {
   int    i;
   float  minrow=0.0, maxrow=0.0, mincol=0.0, maxcol=0.0;
@@ -960,7 +960,7 @@ void Calibration::FindFidCentre(float points[7][2], float &rmid, float &cmid)
  * @param pmid The centre of the rectangular region bounded by the fiducial
  *             points.
  */
-void Calibration::FindFidCorners(float points[7][2], float *pmid)
+void Registration::FindFidCorners(float points[7][2], float *pmid)
 {
   int    i;
   float  itemp[2];
@@ -1039,7 +1039,7 @@ void Calibration::FindFidCorners(float points[7][2], float *pmid)
  * @param p2 Second image point coordinates.
  * @return Distance between points.
  */
-float Calibration::CoordDistance(float *p1, float *p2)
+float Registration::CoordDistance(float *p1, float *p2)
 {
   float sqdist;
 
@@ -1048,7 +1048,7 @@ float Calibration::CoordDistance(float *p1, float *p2)
   // RISK: Argument for SQRT may be negative. Overflow?
   if(sqdist<0)
   {
-  std::cerr << "Calibration::CoordDistance - \
+  std::cerr << "Registration::CoordDistance - \
                               negative SQRT argument.\n" << std::endl;
       return(0);
   } else
@@ -1067,7 +1067,7 @@ float Calibration::CoordDistance(float *p1, float *p2)
  * @param rmid The centre of the fiducial pattern in the row coordinate.
  * @param cmid The centre of the fiducial pattern in the column coordinate.
  */
-void Calibration::OrderFidPoints(float points[7][2], float rmid, float cmid)
+void Registration::OrderFidPoints(float points[7][2], float rmid, float cmid)
 {
   int    pall[9]={0,-1,1,-1,2,-1,3,-1,0};  // prototype index list for all points
   int    pall2[7];
@@ -1092,7 +1092,7 @@ void Calibration::OrderFidPoints(float points[7][2], float rmid, float cmid)
       // RISK: divide by zero.
       if(cdist<MEPSILON)
       {
-      std::cerr <<  "Calibration::OrderFidPoints - \
+      std::cerr <<  "Registration::OrderFidPoints - \
                                 divide by zero." << std::endl;
         // TO DO: this should be detected in the first sanity check.
       } else
@@ -1159,7 +1159,7 @@ void Calibration::OrderFidPoints(float points[7][2], float rmid, float cmid)
  * @param Zorientation Estimated orientation of the Z-frame w.r.t. the image
  *        frame--expressed as a quaternion.
  */
-bool Calibration::LocalizeFrame(float Zcoordinates[7][2],
+bool Registration::LocalizeFrame(float Zcoordinates[7][2],
                                                       Column3Vector &Zposition,
                                                       Quaternion &Zorientation)
 {
@@ -1269,7 +1269,7 @@ bool Calibration::LocalizeFrame(float Zcoordinates[7][2],
   angle = 2*acos(Zorientation.getW());
   if(fabs(angle)>15.0)
   {
-  std::cerr << "Calibration::LocalizeFrame - Rotation angle too large, something is wrong." << std::endl;
+  std::cerr << "Registration::LocalizeFrame - Rotation angle too large, something is wrong." << std::endl;
      return(false);
   }
   if(angle==0.0)
@@ -1311,7 +1311,7 @@ bool Calibration::LocalizeFrame(float Zcoordinates[7][2],
 
   if(fabs(Zposition.getZ())>20.0)
   {
-  std::cerr << "Calibration::LocalizeFrame - Displacement too large, something is wrong." << std::endl;
+  std::cerr << "Registration::LocalizeFrame - Displacement too large, something is wrong." << std::endl;
      return(false);
   }
 
@@ -1337,7 +1337,7 @@ bool Calibration::LocalizeFrame(float Zcoordinates[7][2],
  *            in the Z-frame coordinates.
  * @param P2f Result: diagonal intercept in physical Z-frame coordinates.
  */
-void Calibration::SolveZ(Column3Vector P1, Column3Vector P2,
+void Registration::SolveZ(Column3Vector P1, Column3Vector P2,
                                Column3Vector P3, Column3Vector Oz,
                                Column3Vector Vz, Column3Vector &P2f)
 {
@@ -1368,7 +1368,7 @@ void Calibration::SolveZ(Column3Vector P1, Column3Vector P2,
  * @param imagmat The matrix of imaginary components.
  * @return The magnitude value of the largest k-space element.
  */
-Real Calibration::ComplexMax(Matrix &realmat, Matrix &imagmat)
+Real Registration::ComplexMax(Matrix &realmat, Matrix &imagmat)
 {
   Real maxabs=0.0, valabs=0.0, sqmag=0.0;
 
@@ -1382,7 +1382,7 @@ Real Calibration::ComplexMax(Matrix &realmat, Matrix &imagmat)
       // RISK: Argument for sqrt cannot be negative. Overflow?
     if(sqmag<0)
     {
-    std::cerr << "Calibration::ComplexMax - \
+    std::cerr << "Registration::ComplexMax - \
                                 negative sqrt argument." << std::endl;
     } else
       {
@@ -1407,7 +1407,7 @@ Real Calibration::ComplexMax(Matrix &realmat, Matrix &imagmat)
  * @param realmat A matrix.
  * @return The value of the largest matrix element.
  */
-Real Calibration::RealMax(Matrix &realmat)
+Real Registration::RealMax(Matrix &realmat)
 {
   Real maxabs=0;
 
@@ -1435,7 +1435,7 @@ Real Calibration::RealMax(Matrix &realmat)
  * @param col The Resulting column index at which the max value occurs.
  * @return The value of the largest matrix element.
  */
-Real Calibration::FindMax(Matrix &inmatrix, int &row, int &col)
+Real Registration::FindMax(Matrix &inmatrix, int &row, int &col)
 {
   Real maxabs=0;
   row = col = 0;

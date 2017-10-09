@@ -5,15 +5,15 @@
   See Doc/copyright/copyright.txt
   or http://www.slicer.org/copyright/copyright.txt for details.
 
-  Program:   ZFrame Calibration
+  Program:   ZFrame Registration
   Module:    $HeadURL: http://svn.slicer.org/Slicer3/trunk/Modules/OpenIGTLinkIF/vtkIGTLToMRMLBase.h $
   Date:      $Date: 2009-01-05 13:28:20 -0500 (Mon, 05 Jan 2009) $
   Version:   $Revision: 8267 $
 
 ==========================================================================*/
 
-#ifndef __Calibration_h
-#define __Calibration_h
+#ifndef __Registration_h
+#define __Registration_h
 
 #include "ZLinAlg.h"
 #include "newmatap.h"
@@ -29,14 +29,14 @@ void MatrixToQuaternion(Matrix4x4& m, float* q);
 void Cross(float *a, float *b, float *c);
 void IdentityMatrix(Matrix4x4 &matrix);
 
-class Calibration
+class Registration
 {
 
 public:
 
   // Methods related to finding the fiducial artifacts in the MR images.
-  Calibration();
-  ~Calibration();
+  Registration();
+  ~Registration();
 
 public:
   int SetInputImage(short* inputImage, int dimensions[3], Matrix4x4& transform);
@@ -92,4 +92,4 @@ protected:
 }
 
 
-#endif // __Calibration_h
+#endif // __Registration_h

@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------
-set(MODULE_NAME ZFrameCalibration)
+set(MODULE_NAME ZFrameRegistration)
 
 #-----------------------------------------------------------------------------
 set(MODULE_INCLUDE_DIRECTORIES
@@ -8,9 +8,9 @@ set(MODULE_INCLUDE_DIRECTORIES
   )
 
 set(MODULE_SRCS
-  ${CMAKE_CURRENT_SOURCE_DIR}/ZFrame/Calibration.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/ZFrame/Calibration.cxx
-  ZFrameCalibration.cxx
+  ${CMAKE_CURRENT_SOURCE_DIR}/ZFrame/Registration.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/ZFrame/Registration.cxx
+  ZFrameRegistration.cxx
   )
 
 set(Newmat_SRCS
