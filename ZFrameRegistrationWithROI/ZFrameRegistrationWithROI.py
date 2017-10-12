@@ -72,8 +72,11 @@ class ZFrameRegistrationWithROIWidget(ScriptedLoadableModuleWidget):
   def __init__(self, parent=None):
     ScriptedLoadableModuleWidget.__init__(self, parent)
 
-  def onReload(self):
+  def onReload(self, moduleName="ZFrameRegistrationWithROI"):
+    self.logic.cleanup()
+    slicer.mrmlScene.Clear(0)
     ScriptedLoadableModuleWidget.onReload(self)
+    #globals()[moduleName] = slicer.util.reloadScriptedModule(moduleName)
 
   def setup(self):
     ScriptedLoadableModuleWidget.setup(self)
@@ -359,7 +362,7 @@ class ZFrameRegistrationWithROILogic(ScriptedLoadableModuleLogic):
     self.loadZFrameModel()
     
   def cleanup(self):
-    super(ZFrameRegistrationWithROILogic, self).cleanup()
+    self.clearOldNodes()
 
   def clearOldNodes(self):
     self.clearOldNodesByName(self.ZFRAME_MODEL_NAME)
@@ -475,6 +478,10 @@ class ZFrameRegistrationWithROITest(ScriptedLoadableModuleTest):
   Uses ScriptedLoadableModuleTest base class, available at:
   https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
   """
+  groundTruthMatrix = [0.9999315859310454, 0.009689047677719153, -0.006549676681617225, 5.971096704891779,
+                       -0.009774406649458021, 0.9998660159742193, -0.013128544923338871, -18.918600331582244,
+                       0.006421595844729844, 0.013191666276940213, 0.999892377445857, 102.1792443094631,
+                       0.0, 0.0, 0.0, 1.0]
 
   def setUp(self):
     """ Do whatever is needed to reset the state - typically a scene clear will be enough.
@@ -486,6 +493,9 @@ class ZFrameRegistrationWithROITest(ScriptedLoadableModuleTest):
     """
     self.setUp()
     self.test_ZFrameRegistrationWithROI1()
+
+  def isclose(self, a, b, rel_tol=1e-05, abs_tol=0.0):
+    return abs(a - b) <= max(rel_tol * max(abs(a), abs(b)), abs_tol)
 
   def test_ZFrameRegistrationWithROI1(self):
     """ Ideally you should have several levels of tests.  At the lowest level
@@ -503,26 +513,35 @@ class ZFrameRegistrationWithROITest(ScriptedLoadableModuleTest):
     #
     # first, get some data
     #
-    import urllib
-    downloads = (
-        ('http://slicer.kitware.com/midas3/download?items=5767', 'FA.nrrd', slicer.util.loadVolume),
-        )
 
-    for url,name,loader in downloads:
-      filePath = slicer.app.temporaryPath + '/' + name
-      if not os.path.exists(filePath) or os.stat(filePath).st_size == 0:
-        logging.info('Requesting download %s from %s...\n' % (name, url))
-        urllib.urlretrieve(url, filePath)
-      if loader:
-        logging.info('Loading %s...' % (name,))
-        loader(filePath)
-    self.delayDisplay('Finished with download and loading')
-
-    #volumeNode = slicer.util.getNode(pattern="FA")
-    #logic = ZFrameRegistrationWithROILogic()
-    #self.assertIsNotNone( logic.hasImageData(volumeNode) )
+    currentFilePath = os.path.dirname(os.path.realpath(__file__))
+    imageDataPath = os.path.join(os.path.abspath(os.path.join(currentFilePath, os.pardir)), "ZFrameRegistration","Data","Input","CoverTemplateMasked.nrrd")
+    _, imageDataNode = slicer.util.loadVolume(imageDataPath, returnNode=True)
+    self.delayDisplay('Finished with loading')
+    self.moduleFrame = qt.QWidget()
+    self.moduleFrameLayout = qt.QVBoxLayout()
+    self.moduleFrame.setLayout(self.moduleFrameLayout)
+    self.zFrameRegistrationwidget = ZFrameRegistrationWithROIWidget(self.moduleFrame)
+    self.zFrameRegistrationwidget.setup()
+    self.zFrameRegistrationwidget.zFrameTemplateVolumeSelector.setCurrentNode(imageDataNode)
+    slicer.app.processEvents()
+    ROINode = slicer.mrmlScene.CreateNodeByClass("vtkMRMLAnnotationROINode")
+    ROINode.SetName("ROINodeForCropping")
+    ROICenterPoint = [-6.91920280456543, 15.245062828063965, -101.13504791259766]
+    ROINode.SetXYZ(ROICenterPoint)
+    ROIRadiusXYZ = [36.46055603027344, 38.763328552246094, 36.076759338378906]
+    ROINode.SetRadiusXYZ(ROIRadiusXYZ)
+    slicer.mrmlScene.AddNode(ROINode)
+    slicer.app.processEvents()
+    self.zFrameRegistrationwidget.runZFrameRegistrationButton.click()
+    slicer.app.processEvents()
+    transformNode = slicer.mrmlScene.GetNodeByID(self.zFrameRegistrationwidget.logic.zFrameModelNode.GetTransformNodeID())
+    transformMatrix = transformNode.GetTransformFromParent().GetMatrix()
+    testResultMatrix = [0.0] * 16
+    transformMatrix.DeepCopy(testResultMatrix, transformMatrix)
+    for index in range(len(self.groundTruthMatrix)):
+      self.assertEqual(self.isclose(float(testResultMatrix[index]), float(self.groundTruthMatrix[index])), True)
     self.delayDisplay('Test passed!')
-    
 
 class ZFrameRegistrationWithROISlicelet(qt.QWidget):
   
@@ -551,6 +570,7 @@ class ZFrameRegistrationWithROISlicelet(qt.QWidget):
                                  
     self.zFrameRegistrationwidget = ZFrameRegistrationWithROIWidget(self.moduleFrame)
     self.zFrameRegistrationwidget.setup()
+    self.zFrameRegistrationwidget.reloadCollapsibleButton.visible = False
 
     # TODO: resize self.widget.parent to minimum possible width
 
