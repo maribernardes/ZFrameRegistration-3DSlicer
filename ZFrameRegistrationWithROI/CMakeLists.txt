@@ -8,6 +8,8 @@ set(MODULE_PYTHON_SCRIPTS
 
 set(MODULE_PYTHON_RESOURCES
   Resources/Icons/${MODULE_NAME}.png
+  Resources/Icons/apply.png
+  Resources/Icons/retry.png
   Resources/zframe/zframe-model.vtk
   ../ZFrameRegistration/Data/Input/CoverTemplateMasked.nrrd
   )

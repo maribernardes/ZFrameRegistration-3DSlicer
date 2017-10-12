@@ -103,10 +103,6 @@ class ZFrameRegistrationWithROIWidget(ScriptedLoadableModuleWidget):
 
     self.roiObserverTag = None
     self.coverTemplateROI = None
-    self.zFrameCroppedVolume = None
-    self.zFrameLabelVolume = None
-    self.zFrameMaskedVolume = None
-    self.otsuOutputVolume = None
     
     self.logic = ZFrameRegistrationWithROILogic()
     self.logic.templateVolume = None
@@ -122,40 +118,6 @@ class ZFrameRegistrationWithROIWidget(ScriptedLoadableModuleWidget):
     self.layout.addWidget(widget)
     self.layout.addStretch(1)
     self.onActivation()
-
-  @staticmethod
-  def createCroppedVolume(inputVolume, roi):
-    cropVolumeLogic = slicer.modules.cropvolume.logic()
-    cropVolumeParameterNode = slicer.vtkMRMLCropVolumeParametersNode()
-    cropVolumeParameterNode.SetROINodeID(roi.GetID())
-    cropVolumeParameterNode.SetInputVolumeNodeID(inputVolume.GetID())
-    cropVolumeParameterNode.SetVoxelBased(True)
-    cropVolumeLogic.Apply(cropVolumeParameterNode)
-    croppedVolume = slicer.mrmlScene.GetNodeByID(cropVolumeParameterNode.GetOutputVolumeNodeID())
-    return croppedVolume
-
-  @staticmethod
-  def createMaskedVolume(inputVolume, labelVolume, outputVolumeName=None):
-    maskedVolume = slicer.vtkMRMLScalarVolumeNode()
-    if outputVolumeName:
-      maskedVolume.SetName(outputVolumeName)
-    slicer.mrmlScene.AddNode(maskedVolume)
-    params = {'InputVolume': inputVolume, 'MaskVolume': labelVolume, 'OutputVolume': maskedVolume}
-    slicer.cli.run(slicer.modules.maskscalarvolume, None, params, wait_for_completion=True)
-    return maskedVolume
-
-  @staticmethod
-  def createLabelMapFromCroppedVolume(volume, name, lowerThreshold=0, upperThreshold=2000, labelValue=1):
-    volumesLogic = slicer.modules.volumes.logic()
-    labelVolume = volumesLogic.CreateAndAddLabelVolume(volume, name)
-    imageData = labelVolume.GetImageData()
-    imageThreshold = vtk.vtkImageThreshold()
-    imageThreshold.SetInputData(imageData)
-    imageThreshold.ThresholdBetween(lowerThreshold, upperThreshold)
-    imageThreshold.SetInValue(labelValue)
-    imageThreshold.Update()
-    labelVolume.SetAndObserveImageData(imageThreshold.GetOutput())
-    return labelVolume
 
   def setupSliceWidget(self):
     self.redWidget = slicer.app.layoutManager().sliceWidget("Red")
@@ -227,22 +189,8 @@ class ZFrameRegistrationWithROIWidget(ScriptedLoadableModuleWidget):
     if self.logic.templateVolume:
       self.initiateZFrameRegistration()
       
-  def clearVolumeNodes(self):
-    if self.zFrameCroppedVolume:
-      slicer.mrmlScene.RemoveNode(self.zFrameCroppedVolume)
-      self.zFrameCroppedVolume = None
-    if self.zFrameLabelVolume:
-      slicer.mrmlScene.RemoveNode(self.zFrameLabelVolume)
-      self.zFrameLabelVolume = None
-    if self.zFrameMaskedVolume:
-      slicer.mrmlScene.RemoveNode(self.zFrameMaskedVolume)
-      self.zFrameMaskedVolume = None
-    if self.otsuOutputVolume:
-      slicer.mrmlScene.RemoveNode(self.otsuOutputVolume)
-      self.otsuOutputVolume = None
-      
   def initiateZFrameRegistration(self):
-    self.clearVolumeNodes()
+    self.logic.clearVolumeNodes()
     if self.coverTemplateROI:
       slicer.mrmlScene.RemoveNode(self.coverTemplateROI)
       self.coverTemplateROI = None
@@ -299,27 +247,16 @@ class ZFrameRegistrationWithROIWidget(ScriptedLoadableModuleWidget):
   def onApplyZFrameRegistrationButtonClicked(self):
     zFrameTemplateVolume = self.logic.templateVolume
     try:
-      self.clearVolumeNodes()
       self.annotationLogic.SetAnnotationLockedUnlocked(self.coverTemplateROI.GetID())
-      self.zFrameCroppedVolume = self.createCroppedVolume(zFrameTemplateVolume, self.coverTemplateROI)
-      self.zFrameLabelVolume = self.createLabelMapFromCroppedVolume(self.zFrameCroppedVolume, "labelmap")
-      self.zFrameMaskedVolume = self.createMaskedVolume(zFrameTemplateVolume, self.zFrameLabelVolume,
-                                                              outputVolumeName="maskedTemplateVolume")
-      self.zFrameMaskedVolume.SetName(zFrameTemplateVolume.GetName() + "-label")
 
       if not self.zFrameRegistrationManualIndexesGroupBox.checked:
-        start, center, end = self.logic.getROIMinCenterMaxSliceNumbers(self.coverTemplateROI)
-        self.otsuOutputVolume = self.logic.applyITKOtsuFilter(self.zFrameMaskedVolume)
-        self.logic.dilateMask(self.otsuOutputVolume)
-        start, end = self.logic.getStartEndWithConnectedComponents(self.otsuOutputVolume, center)
-        self.zFrameRegistrationStartIndex.value = start
-        self.zFrameRegistrationEndIndex.value = end
+        self.logic.runZFrameOpenSourceRegistration(zFrameTemplateVolume, self.coverTemplateROI)
+        self.zFrameRegistrationStartIndex.value = self.logic.startIndex
+        self.zFrameRegistrationEndIndex.value = self.logic.endIndex
       else:
-        start = self.zFrameRegistrationStartIndex.value
-        end = self.zFrameRegistrationEndIndex.value
-      self.logic.runZFrameOpenSourceRegistration(self.zFrameMaskedVolume,
-                                       startSlice=start, endSlice=end)
-      self.clearVolumeNodes()
+        startIndex = self.zFrameRegistrationStartIndex.value
+        endIndex = self.zFrameRegistrationEndIndex.value
+        self.logic.runZFrameOpenSourceRegistration(zFrameTemplateVolume, self.coverTemplateROI, start=startIndex, end=endIndex)
       self.setBackgroundAndForegroundIDs(foregroundVolumeID=None, backgroundVolumeID=self.logic.templateVolume.GetID())
       self.logic.zFrameModelNode.SetAndObserveTransformNodeID(self.logic.openSourceRegistration.outputTransform.GetID())
       self.logic.zFrameModelNode.GetDisplayNode().SetSliceIntersectionVisibility(True)
@@ -352,21 +289,48 @@ class ZFrameRegistrationWithROILogic(ScriptedLoadableModuleLogic):
     self.redSliceWidget = slicer.app.layoutManager().sliceWidget("Red")
     self.redSliceView = self.redSliceWidget.sliceView()
     self.redSliceLogic = self.redSliceWidget.sliceLogic()
-    self.resetAndInitializeData()
     self.otsuFilter = sitk.OtsuThresholdImageFilter()
     self.openSourceRegistration = OpenSourceZFrameRegistration(slicer.mrmlScene)
+    self.zFrameCroppedVolume = None
+    self.zFrameLabelVolume = None
+    self.zFrameMaskedVolume = None
+    self.otsuOutputVolume = None
+    self.startIndex = None
+    self.endIndex = None
+    self.zFrameModelNode = None
+    self.resetAndInitializeData()
 
   def resetAndInitializeData(self):
-    self.zFrameModelNode = None
     self.clearOldNodes()
     self.loadZFrameModel()
+    self.startIndex = None
+    self.endIndex = None
+
+  def clearVolumeNodes(self):
+    if self.zFrameCroppedVolume:
+      slicer.mrmlScene.RemoveNode(self.zFrameCroppedVolume)
+      self.zFrameCroppedVolume = None
+    if self.zFrameLabelVolume:
+      slicer.mrmlScene.RemoveNode(self.zFrameLabelVolume)
+      self.zFrameLabelVolume = None
+    if self.zFrameMaskedVolume:
+      slicer.mrmlScene.RemoveNode(self.zFrameMaskedVolume)
+      self.zFrameMaskedVolume = None
+    if self.otsuOutputVolume:
+      slicer.mrmlScene.RemoveNode(self.otsuOutputVolume)
+      self.otsuOutputVolume = None
     
   def cleanup(self):
+    self.clearVolumeNodes()
     self.clearOldNodes()
 
   def clearOldNodes(self):
-    self.clearOldNodesByName(self.ZFRAME_MODEL_NAME)
-    # self.clearOldNodesByName(self.COMPUTED_NEEDLE_MODEL_NAME)
+    if self.openSourceRegistration.inputVolume:
+      slicer.mrmlScene.RemoveNode(self.openSourceRegistration.inputVolume)
+    if self.zFrameModelNode:
+      slicer.mrmlScene.RemoveNode(self.zFrameModelNode)
+    if self.openSourceRegistration.outputTransform:
+      slicer.mrmlScene.RemoveNode(self.openSourceRegistration.outputTransform)
 
   def loadZFrameModel(self):
     if self.zFrameModelNode:
@@ -381,15 +345,22 @@ class ZFrameRegistrationWithROILogic(ScriptedLoadableModuleLogic):
     modelDisplayNode.SetColor(1, 1, 0)
     self.zFrameModelNode.SetDisplayVisibility(False)
 
-  def clearOldNodesByName(self, name):
-    collection = slicer.mrmlScene.GetNodesByName(name)
-    for index in range(collection.GetNumberOfItems()):
-      slicer.mrmlScene.RemoveNode(collection.GetItemAsObject(index))
-
-  def runZFrameOpenSourceRegistration(self, inputVolume, **kwargs):
-    self.openSourceRegistration.setInputVolume(inputVolume)
-
-    self.openSourceRegistration.runRegistration(start=kwargs.pop("startSlice"), end=kwargs.pop("endSlice"))
+  def runZFrameOpenSourceRegistration(self, zFrameTemplateVolume, coverTemplateROI, start = None, end = None):
+    self.startIndex = start
+    self.endIndex = end
+    if self.startIndex == None or self.endIndex == None:
+      self.zFrameCroppedVolume = self.createCroppedVolume(zFrameTemplateVolume, coverTemplateROI)
+      self.zFrameLabelVolume = self.createLabelMapFromCroppedVolume(self.zFrameCroppedVolume, "labelmap")
+      self.zFrameMaskedVolume = self.createMaskedVolume(zFrameTemplateVolume, self.zFrameLabelVolume,
+                                                        outputVolumeName="maskedTemplateVolume")
+      self.zFrameMaskedVolume.SetName(zFrameTemplateVolume.GetName() + "-label")
+      self.startIndex, center, self.endIndex = self.getROIMinCenterMaxSliceNumbers(coverTemplateROI)
+      self.otsuOutputVolume = self.applyITKOtsuFilter(self.zFrameMaskedVolume)
+      self.dilateMask(self.otsuOutputVolume)
+      self.startIndex, self.endIndex = self.getStartEndWithConnectedComponents(self.otsuOutputVolume, center)
+    self.openSourceRegistration.setInputVolume(zFrameTemplateVolume)
+    self.openSourceRegistration.runRegistration(self.startIndex, self.endIndex)
+    self.clearVolumeNodes()
     return True
 
   @staticmethod
@@ -426,6 +397,40 @@ class ZFrameRegistrationWithROILogic(ScriptedLoadableModuleLogic):
     dilateErode.SetKernelSize(kernelSizePixel[0], kernelSizePixel[1], kernelSizePixel[2])
     dilateErode.Update()
     label.SetAndObserveImageData(dilateErode.GetOutput())
+
+  @staticmethod
+  def createCroppedVolume(inputVolume, roi):
+    cropVolumeLogic = slicer.modules.cropvolume.logic()
+    cropVolumeParameterNode = slicer.vtkMRMLCropVolumeParametersNode()
+    cropVolumeParameterNode.SetROINodeID(roi.GetID())
+    cropVolumeParameterNode.SetInputVolumeNodeID(inputVolume.GetID())
+    cropVolumeParameterNode.SetVoxelBased(True)
+    cropVolumeLogic.Apply(cropVolumeParameterNode)
+    croppedVolume = slicer.mrmlScene.GetNodeByID(cropVolumeParameterNode.GetOutputVolumeNodeID())
+    return croppedVolume
+
+  @staticmethod
+  def createMaskedVolume(inputVolume, labelVolume, outputVolumeName=None):
+    maskedVolume = slicer.vtkMRMLScalarVolumeNode()
+    if outputVolumeName:
+      maskedVolume.SetName(outputVolumeName)
+    slicer.mrmlScene.AddNode(maskedVolume)
+    params = {'InputVolume': inputVolume, 'MaskVolume': labelVolume, 'OutputVolume': maskedVolume}
+    slicer.cli.run(slicer.modules.maskscalarvolume, None, params, wait_for_completion=True)
+    return maskedVolume
+
+  @staticmethod
+  def createLabelMapFromCroppedVolume(volume, name, lowerThreshold=0, upperThreshold=2000, labelValue=1):
+    volumesLogic = slicer.modules.volumes.logic()
+    labelVolume = volumesLogic.CreateAndAddLabelVolume(volume, name)
+    imageData = labelVolume.GetImageData()
+    imageThreshold = vtk.vtkImageThreshold()
+    imageThreshold.SetInputData(imageData)
+    imageThreshold.ThresholdBetween(lowerThreshold, upperThreshold)
+    imageThreshold.SetInValue(labelValue)
+    imageThreshold.Update()
+    labelVolume.SetAndObserveImageData(imageThreshold.GetOutput())
+    return labelVolume
 
   def getROIMinCenterMaxSliceNumbers(self, coverTemplateROI):
     center = [0.0, 0.0, 0.0]
@@ -517,15 +522,11 @@ class ZFrameRegistrationWithROITest(ScriptedLoadableModuleTest):
     currentFilePath = os.path.dirname(os.path.realpath(__file__))
     imageDataPath = os.path.join(os.path.abspath(os.path.join(currentFilePath, os.pardir)), "ZFrameRegistration","Data","Input","CoverTemplateMasked.nrrd")
     _, imageDataNode = slicer.util.loadVolume(imageDataPath, returnNode=True)
-    self.delayDisplay('Finished with loading')
-    self.moduleFrame = qt.QWidget()
-    self.moduleFrameLayout = qt.QVBoxLayout()
-    self.moduleFrame.setLayout(self.moduleFrameLayout)
-    self.zFrameRegistrationwidget = ZFrameRegistrationWithROIWidget(self.moduleFrame)
-    self.zFrameRegistrationwidget.setup()
-    self.zFrameRegistrationwidget.zFrameTemplateVolumeSelector.setCurrentNode(imageDataNode)
     slicer.app.processEvents()
-    ROINode = slicer.mrmlScene.CreateNodeByClass("vtkMRMLAnnotationROINode")
+    self.delayDisplay('Finished with loading')
+
+    zFrameRegistrationLogic = ZFrameRegistrationWithROILogic()
+    ROINode = slicer.vtkMRMLAnnotationROINode()
     ROINode.SetName("ROINodeForCropping")
     ROICenterPoint = [-6.91920280456543, 15.245062828063965, -101.13504791259766]
     ROINode.SetXYZ(ROICenterPoint)
@@ -533,15 +534,20 @@ class ZFrameRegistrationWithROITest(ScriptedLoadableModuleTest):
     ROINode.SetRadiusXYZ(ROIRadiusXYZ)
     slicer.mrmlScene.AddNode(ROINode)
     slicer.app.processEvents()
-    self.zFrameRegistrationwidget.runZFrameRegistrationButton.click()
+
+    zFrameRegistrationLogic.runZFrameOpenSourceRegistration(imageDataNode,coverTemplateROI=ROINode)
     slicer.app.processEvents()
-    transformNode = slicer.mrmlScene.GetNodeByID(self.zFrameRegistrationwidget.logic.zFrameModelNode.GetTransformNodeID())
+    transformNode = zFrameRegistrationLogic.openSourceRegistration.outputTransform
     transformMatrix = transformNode.GetTransformFromParent().GetMatrix()
     testResultMatrix = [0.0] * 16
     transformMatrix.DeepCopy(testResultMatrix, transformMatrix)
     for index in range(len(self.groundTruthMatrix)):
       self.assertEqual(self.isclose(float(testResultMatrix[index]), float(self.groundTruthMatrix[index])), True)
+    zFrameRegistrationLogic.clearVolumeNodes()
+
     self.delayDisplay('Test passed!')
+
+
 
 class ZFrameRegistrationWithROISlicelet(qt.QWidget):
   
