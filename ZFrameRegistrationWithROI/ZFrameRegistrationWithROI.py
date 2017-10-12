@@ -296,29 +296,27 @@ class ZFrameRegistrationWithROIWidget(ScriptedLoadableModuleWidget):
   def onApplyZFrameRegistrationButtonClicked(self):
     zFrameTemplateVolume = self.logic.templateVolume
     try:
-      if self.zFrameRegistrationClass is OpenSourceZFrameRegistration:
-        self.clearVolumeNodes()
-        self.annotationLogic.SetAnnotationLockedUnlocked(self.coverTemplateROI.GetID())
-        self.zFrameCroppedVolume = self.createCroppedVolume(zFrameTemplateVolume, self.coverTemplateROI)
-        self.zFrameLabelVolume = self.createLabelMapFromCroppedVolume(self.zFrameCroppedVolume, "labelmap")
-        self.zFrameMaskedVolume = self.createMaskedVolume(zFrameTemplateVolume, self.zFrameLabelVolume,
-                                                                outputVolumeName="maskedTemplateVolume")
-        self.zFrameMaskedVolume.SetName(zFrameTemplateVolume.GetName() + "-label")
+      self.clearVolumeNodes()
+      self.annotationLogic.SetAnnotationLockedUnlocked(self.coverTemplateROI.GetID())
+      self.zFrameCroppedVolume = self.createCroppedVolume(zFrameTemplateVolume, self.coverTemplateROI)
+      self.zFrameLabelVolume = self.createLabelMapFromCroppedVolume(self.zFrameCroppedVolume, "labelmap")
+      self.zFrameMaskedVolume = self.createMaskedVolume(zFrameTemplateVolume, self.zFrameLabelVolume,
+                                                              outputVolumeName="maskedTemplateVolume")
+      self.zFrameMaskedVolume.SetName(zFrameTemplateVolume.GetName() + "-label")
 
-        if not self.zFrameRegistrationManualIndexesGroupBox.checked:
-          start, center, end = self.logic.getROIMinCenterMaxSliceNumbers(self.coverTemplateROI)
-          self.otsuOutputVolume = self.logic.applyITKOtsuFilter(self.zFrameMaskedVolume)
-          self.logic.dilateMask(self.otsuOutputVolume)
-          start, end = self.logic.getStartEndWithConnectedComponents(self.otsuOutputVolume, center)
-          self.zFrameRegistrationStartIndex.value = start
-          self.zFrameRegistrationEndIndex.value = end
-        else:
-          start = self.zFrameRegistrationStartIndex.value
-          end = self.zFrameRegistrationEndIndex.value
-        self.logic.runZFrameOpenSourceRegistration(self.zFrameMaskedVolume,
-                                         startSlice=start, endSlice=end)
+      if not self.zFrameRegistrationManualIndexesGroupBox.checked:
+        start, center, end = self.logic.getROIMinCenterMaxSliceNumbers(self.coverTemplateROI)
+        self.otsuOutputVolume = self.logic.applyITKOtsuFilter(self.zFrameMaskedVolume)
+        self.logic.dilateMask(self.otsuOutputVolume)
+        start, end = self.logic.getStartEndWithConnectedComponents(self.otsuOutputVolume, center)
+        self.zFrameRegistrationStartIndex.value = start
+        self.zFrameRegistrationEndIndex.value = end
       else:
-        self.logic.runZFrameOpenSourceRegistration(zFrameTemplateVolume)
+        start = self.zFrameRegistrationStartIndex.value
+        end = self.zFrameRegistrationEndIndex.value
+      self.logic.runZFrameOpenSourceRegistration(self.zFrameMaskedVolume,
+                                       startSlice=start, endSlice=end)
+      self.clearVolumeNodes()
       self.setBackgroundAndForegroundIDs(foregroundVolumeID=None, backgroundVolumeID=self.logic.templateVolume.GetID())
       self.logic.zFrameModelNode.SetAndObserveTransformNodeID(self.logic.openSourceRegistration.outputTransform.GetID())
       self.logic.zFrameModelNode.GetDisplayNode().SetSliceIntersectionVisibility(True)
@@ -524,3 +522,88 @@ class ZFrameRegistrationWithROITest(ScriptedLoadableModuleTest):
     #logic = ZFrameRegistrationWithROILogic()
     #self.assertIsNotNone( logic.hasImageData(volumeNode) )
     self.delayDisplay('Test passed!')
+    
+
+class ZFrameRegistrationWithROISlicelet(qt.QWidget):
+  
+  def __init__(self):
+    qt.QWidget.__init__(self)
+    self.setLayout(qt.QVBoxLayout())
+    self.mainWidget = qt.QWidget()
+    self.mainWidget.objectName = "qSlicerAppMainWindow"
+    self.mainWidget.setLayout(qt.QVBoxLayout())
+    
+    self.setupLayoutWidget()
+
+    self.moduleFrame = qt.QWidget()
+    self.moduleFrameLayout = qt.QVBoxLayout()
+    self.moduleFrame.setLayout(self.moduleFrameLayout)
+    
+    self.buttons = qt.QFrame()
+    self.buttons.setLayout( qt.QHBoxLayout() )
+    self.moduleFrameLayout.addWidget(self.buttons)
+    self.addDataButton = qt.QPushButton("Add Data")
+    self.buttons.layout().addWidget(self.addDataButton)
+    self.addDataButton.connect("clicked()",slicer.app.ioManager().openAddDataDialog)
+    self.loadSceneButton = qt.QPushButton("Load Scene")
+    self.buttons.layout().addWidget(self.loadSceneButton)
+    self.loadSceneButton.connect("clicked()",slicer.app.ioManager().openLoadSceneDialog)
+                                 
+    self.zFrameRegistrationwidget = ZFrameRegistrationWithROIWidget(self.moduleFrame)
+    self.zFrameRegistrationwidget.setup()
+
+    # TODO: resize self.widget.parent to minimum possible width
+
+    self.scrollArea = qt.QScrollArea()
+    self.scrollArea.setWidget(self.zFrameRegistrationwidget.parent)
+    self.scrollArea.setWidgetResizable(True)
+    self.scrollArea.setMinimumWidth(self.zFrameRegistrationwidget.parent.minimumSizeHint.width())
+
+    self.splitter = qt.QSplitter()
+    self.splitter.setOrientation(qt.Qt.Horizontal)
+    self.splitter.addWidget(self.scrollArea)
+    self.splitter.addWidget(self.layoutWidget)
+    self.splitter.splitterMoved.connect(self.onSplitterMoved)
+
+    self.splitter.setStretchFactor(0,0)
+    self.splitter.setStretchFactor(1,1)
+    self.splitter.handle(1).installEventFilter(self)
+
+    self.mainWidget.layout().addWidget(self.splitter)
+    self.mainWidget.show()
+
+  def setupLayoutWidget(self):
+    self.layoutWidget = qt.QWidget()
+    self.layoutWidget.setLayout(qt.QHBoxLayout())
+    layoutWidget = slicer.qMRMLLayoutWidget()
+    layoutManager = slicer.qSlicerLayoutManager()
+    layoutManager.setMRMLScene(slicer.mrmlScene)
+    layoutManager.setScriptedDisplayableManagerDirectory(slicer.app.slicerHome + "/bin/Python/mrmlDisplayableManager")
+    layoutWidget.setLayoutManager(layoutManager)
+    slicer.app.setLayoutManager(layoutManager)
+    layoutWidget.setLayout(slicer.vtkMRMLLayoutNode.SlicerLayoutFourUpView)
+    self.layoutWidget.layout().addWidget(layoutWidget)
+
+  def eventFilter(self, obj, event):
+    if event.type() == qt.QEvent.MouseButtonDblClick:
+      self.onSplitterClick()
+
+  def onSplitterMoved(self, pos, index):
+    vScroll = self.scrollArea.verticalScrollBar()
+    vScrollbarWidth = 4 if not vScroll.isVisible() else vScroll.width + 4
+    if self.scrollArea.minimumWidth != self.zFrameRegistrationwidget.parent.minimumSizeHint.width() + vScrollbarWidth:
+      self.scrollArea.setMinimumWidth(self.zFrameRegistrationwidget.parent.minimumSizeHint.width() + vScrollbarWidth)
+
+  def onSplitterClick(self):
+    if self.splitter.sizes()[0] > 0:
+      self.splitter.setSizes([0, self.splitter.sizes()[1]])
+    else:
+      minimumWidth = self.zFrameRegistrationwidget.parent.minimumSizeHint.width()
+      self.splitter.setSizes([minimumWidth, self.splitter.sizes()[1]-minimumWidth])
+
+
+if __name__ == "__main__":
+  import sys
+  print( sys.argv )
+
+  slicelet = ZFrameRegistrationWithROISlicelet()        
