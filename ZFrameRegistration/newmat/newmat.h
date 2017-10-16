@@ -639,7 +639,7 @@ public:
    Matrix(Real, int, int);
    Matrix(const Real*, int, int);
 #endif
-   Matrix(const Matrix& gm) { GetMatrix(&gm); }
+  Matrix(const Matrix& gm):GeneralMatrix(gm){ GetMatrix(&gm); }
    GeneralMatrix* MakeSolver();
    Real trace() const;
    void GetRow(MatrixRowCol&);
@@ -682,7 +682,7 @@ public:
    void operator=(const SquareMatrix& m) { Eq(m); }
    void operator=(const Matrix& m);
    MatrixType type() const;
-   SquareMatrix(const SquareMatrix& gm) { GetMatrix(&gm); }
+   SquareMatrix(const SquareMatrix& gm):Matrix(gm){ GetMatrix(&gm); }
    SquareMatrix(const Matrix& gm);
    void resize(int);                            // change dimensions
    void ReSize(int m) { resize(m); }
@@ -720,7 +720,7 @@ public:
       { DeleteRowPointer(); Eq(m); MakeRowPointer(); }
    void operator<<(const BaseMatrix& X)
       { DeleteRowPointer(); Eq(X,this->type(),true); MakeRowPointer(); }
-   nricMatrix(const nricMatrix& gm) { GetMatrix(&gm); MakeRowPointer(); }
+   nricMatrix(const nricMatrix& gm):Matrix(gm){ GetMatrix(&gm); MakeRowPointer(); }
    void resize(int m, int n)               // change dimensions
       { DeleteRowPointer(); Matrix::resize(m,n); MakeRowPointer(); }
    void resize_keep(int m, int n)               // change dimensions
@@ -761,7 +761,7 @@ public:
    const Real* operator[](int m) const { return store+(m*(m+1))/2; }
 #endif
    MatrixType type() const;
-   SymmetricMatrix(const SymmetricMatrix& gm) { GetMatrix(&gm); }
+   SymmetricMatrix(const SymmetricMatrix& gm):GeneralMatrix(gm) { GetMatrix(&gm); }
    Real sum_square() const;
    Real sum_absolute_value() const;
    Real sum() const;
@@ -795,7 +795,7 @@ public:
    void operator=(const BaseMatrix&);
    void operator=(const UpperTriangularMatrix& m) { Eq(m); }
    UpperTriangularMatrix(const BaseMatrix&);
-   UpperTriangularMatrix(const UpperTriangularMatrix& gm) { GetMatrix(&gm); }
+   UpperTriangularMatrix(const UpperTriangularMatrix& gm):GeneralMatrix(gm) { GetMatrix(&gm); }
    void operator=(Real f) { GeneralMatrix::operator=(f); }
    Real& operator()(int, int);                  // access element
    Real& element(int, int);                     // access element
@@ -839,7 +839,7 @@ public:
    LowerTriangularMatrix() {}
    ~LowerTriangularMatrix() {}
    LowerTriangularMatrix(ArrayLengthSpecifier);
-   LowerTriangularMatrix(const LowerTriangularMatrix& gm) { GetMatrix(&gm); }
+   LowerTriangularMatrix(const LowerTriangularMatrix& gm):GeneralMatrix(gm) { GetMatrix(&gm); }
    LowerTriangularMatrix(const BaseMatrix& M);
    void operator=(const BaseMatrix&);
    void operator=(Real f) { GeneralMatrix::operator=(f); }
@@ -886,7 +886,7 @@ public:
    ~DiagonalMatrix() {}
    DiagonalMatrix(ArrayLengthSpecifier);
    DiagonalMatrix(const BaseMatrix&);
-   DiagonalMatrix(const DiagonalMatrix& gm) { GetMatrix(&gm); }
+   DiagonalMatrix(const DiagonalMatrix& gm):GeneralMatrix(gm) { GetMatrix(&gm); }
    void operator=(const BaseMatrix&);
    void operator=(Real f) { GeneralMatrix::operator=(f); }
    void operator=(const DiagonalMatrix& m) { Eq(m); }
@@ -941,7 +941,7 @@ public:
    ~RowVector() {}
    RowVector(ArrayLengthSpecifier n) : Matrix(1,n.Value()) {}
    RowVector(const BaseMatrix&);
-   RowVector(const RowVector& gm) { GetMatrix(&gm); }
+   RowVector(const RowVector& gm):Matrix(gm) { GetMatrix(&gm); }
    void operator=(const BaseMatrix&);
    void operator=(Real f) { GeneralMatrix::operator=(f); }
    void operator=(const RowVector& m) { Eq(m); }
@@ -995,7 +995,7 @@ public:
    ~ColumnVector() {}
    ColumnVector(ArrayLengthSpecifier n) : Matrix(n.Value(),1) {}
    ColumnVector(const BaseMatrix&);
-   ColumnVector(const ColumnVector& gm) { GetMatrix(&gm); }
+   ColumnVector(const ColumnVector& gm):Matrix(gm) { GetMatrix(&gm); }
    void operator=(const BaseMatrix&);
    void operator=(Real f) { GeneralMatrix::operator=(f); }
    void operator=(const ColumnVector& m) { Eq(m); }
@@ -1097,7 +1097,7 @@ public:
    const Real* operator[](int m) const
       { return store+(upper_val+lower_val)*m+lower_val; }
 #endif
-   BandMatrix(const BandMatrix& gm) { GetMatrix(&gm); }
+   BandMatrix(const BandMatrix& gm):GeneralMatrix(gm) { GetMatrix(&gm); }
    LogAndSign log_determinant() const;
    GeneralMatrix* MakeSolver();
    Real trace() const;
@@ -1154,7 +1154,7 @@ public:
    void operator=(Real f) { GeneralMatrix::operator=(f); }
    void operator=(const UpperBandMatrix& m) { Eq(m); }
    MatrixType type() const;
-   UpperBandMatrix(const UpperBandMatrix& gm) { GetMatrix(&gm); }
+   UpperBandMatrix(const UpperBandMatrix& gm):BandMatrix(gm) { GetMatrix(&gm); }
    GeneralMatrix* MakeSolver() { return this; }
    void Solver(MatrixColX&, const MatrixColX&);
    LogAndSign log_determinant() const;
@@ -1192,7 +1192,7 @@ public:
    void operator=(Real f) { GeneralMatrix::operator=(f); }
    void operator=(const LowerBandMatrix& m) { Eq(m); }
    MatrixType type() const;
-   LowerBandMatrix(const LowerBandMatrix& gm) { GetMatrix(&gm); }
+   LowerBandMatrix(const LowerBandMatrix& gm):BandMatrix(gm) { GetMatrix(&gm); }
    GeneralMatrix* MakeSolver() { return this; }
    void Solver(MatrixColX&, const MatrixColX&);
    LogAndSign log_determinant() const;
@@ -1240,7 +1240,7 @@ public:
    const Real* operator[](int m) const { return store+lower_val*(m+1); }
 #endif
    MatrixType type() const;
-   SymmetricBandMatrix(const SymmetricBandMatrix& gm) { GetMatrix(&gm); }
+   SymmetricBandMatrix(const SymmetricBandMatrix& gm):GeneralMatrix(gm) { GetMatrix(&gm); }
    GeneralMatrix* MakeSolver();
    Real sum_square() const;
    Real sum_absolute_value() const;
@@ -1328,7 +1328,7 @@ public:
    ~IdentityMatrix() {}
    IdentityMatrix(ArrayLengthSpecifier n) : GeneralMatrix(1)
       { nrows_val = ncols_val = n.Value(); *store = 1; }
-   IdentityMatrix(const IdentityMatrix& gm) { GetMatrix(&gm); }
+  IdentityMatrix(const IdentityMatrix& gm):GeneralMatrix(gm){ GetMatrix(&gm); }
    IdentityMatrix(const BaseMatrix&);
    void operator=(const BaseMatrix&);
    void operator=(const IdentityMatrix& m) { Eq(m); }
@@ -1374,7 +1374,7 @@ public:
    GenericMatrix() : gm(0) {}
    GenericMatrix(const BaseMatrix& bm)
       { gm = ((BaseMatrix&)bm).Evaluate(); gm = gm->Image(); }
-   GenericMatrix(const GenericMatrix& bm)
+   GenericMatrix(const GenericMatrix& bm):BaseMatrix(bm)
       { gm = bm.gm->Image(); }
    void operator=(const GenericMatrix&);
    void operator=(const BaseMatrix&);
