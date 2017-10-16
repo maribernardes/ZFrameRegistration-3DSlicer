@@ -211,7 +211,7 @@ void CroutMatrix::get_aux(CroutMatrix& X)
    }
 }
 
-CroutMatrix::CroutMatrix(const CroutMatrix& gm)
+CroutMatrix::CroutMatrix(const CroutMatrix& gm):GeneralMatrix(gm)
 {
    REPORT
    Tracer tr("CroutMatrix(const CroutMatrix&)");

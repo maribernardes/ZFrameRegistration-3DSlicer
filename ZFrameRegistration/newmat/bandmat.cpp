@@ -293,7 +293,7 @@ void BandLUMatrix::get_aux(BandLUMatrix& X)
    }
 }
 
-BandLUMatrix::BandLUMatrix(const BandLUMatrix& gm)
+BandLUMatrix::BandLUMatrix(const BandLUMatrix& gm):GeneralMatrix(gm)
 {
    REPORT
    Tracer tr("BandLUMatrix(const BandLUMatrix&)");
