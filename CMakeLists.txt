@@ -4,7 +4,7 @@ project(ZFrameRegistration)
 
 #-----------------------------------------------------------------------------
 # Extension meta-information
-set(EXTENSION_HOMEPAGE "http://slicer.org/slicerWiki/index.php/Documentation/Nightly/Extensions/ZFrameRegistration")
+set(EXTENSION_HOMEPAGE "https://github.com/SlicerProstate/SlicerZFrameRegistration")
 set(EXTENSION_CATEGORY "IGT")
 set(EXTENSION_CONTRIBUTORS "Junichi Tokuda (SPL), Christian Herz (SPL), Simon Di Maio (SPL), Longquan Chen (SPL), Andrey Fedorov (SPL)")
 set(EXTENSION_DESCRIPTION "This extension provides support for procedures with ZFrame Registration")
