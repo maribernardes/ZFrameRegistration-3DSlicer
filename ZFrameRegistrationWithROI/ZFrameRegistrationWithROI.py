@@ -50,7 +50,8 @@ class ZFrameRegistrationWithROI(ScriptedLoadableModule):
     self.parent.title = "ZFrameRegistrationWithROI" # TODO make this more human readable by adding spaces
     self.parent.categories = ["IGT"]
     self.parent.dependencies = []
-    self.parent.contributors = ["Junichi Tokuda (SPL), Simon Di Maio (SPL), Longquan Chen (SPL), Christian Herz (SPL), Andrey Fedorov (SPL)"] # replace with "Firstname Lastname (Organization)"
+    self.parent.contributors = ["Christian Herz (SPL), Longquan Chen (SPL), Junichi Tokuda (SPL), "
+                                "Simon Di Maio (SPL), Andrey Fedorov (SPL)"]
     self.parent.helpText = """
 This is an example of scripted loadable module bundled in an extension.
 It performs a simple thresholding on the input volume and optionally captures a screenshot.
@@ -546,7 +547,6 @@ class ZFrameRegistrationWithROITest(ScriptedLoadableModuleTest):
     zFrameRegistrationLogic.clearVolumeNodes()
 
     self.delayDisplay('Test passed!')
-
 
 
 class ZFrameRegistrationWithROISlicelet(qt.QWidget):
