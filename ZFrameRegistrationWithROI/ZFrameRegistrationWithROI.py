@@ -5,6 +5,9 @@ from slicer.ScriptedLoadableModule import *
 import logging
 import SimpleITK as sitk
 import sitkUtils
+from SlicerDevelopmentToolboxUtils.mixins import ModuleLogicMixin, ModuleWidgetMixin
+from SlicerDevelopmentToolboxUtils.icons import Icons
+
 #
 # ZFrameRegistrationWithROI
 #
@@ -66,7 +69,7 @@ and Steve Pieper, Isomics, Inc. and was partially funded by NIH grant 3P41RR0132
 # ZFrameRegistrationWithROIWidget
 #
 
-class ZFrameRegistrationWithROIWidget(ScriptedLoadableModuleWidget):
+class ZFrameRegistrationWithROIWidget(ScriptedLoadableModuleWidget, ModuleWidgetMixin):
   """Uses ScriptedLoadableModuleWidget base class, available at:
   https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
   """
@@ -155,21 +158,10 @@ class ZFrameRegistrationWithROIWidget(ScriptedLoadableModuleWidget):
   
   def setupActionButtons(self):
     iconSize = qt.QSize(36, 36)
-    currentFilePath = os.path.dirname(os.path.realpath(__file__))
-    applyFileName = os.path.join(currentFilePath, "Resources", "Icons", "apply.png")
-    applyIcon = qt.QIcon(qt.QPixmap(applyFileName))
-    retryFileName = os.path.join(currentFilePath, "Resources", "Icons", "retry.png")
-    retryIcon = qt.QIcon(qt.QPixmap(retryFileName))
-    self.runZFrameRegistrationButton = qt.QPushButton("")
-    self.runZFrameRegistrationButton.icon = applyIcon
-    self.runZFrameRegistrationButton.iconSize=iconSize
-    self.runZFrameRegistrationButton.enabled = True
-    self.runZFrameRegistrationButton.toolTip = "Run ZFrame Registration"
-    self.retryZFrameRegistrationButton = qt.QPushButton("")
-    self.retryZFrameRegistrationButton.icon = retryIcon
-    self.retryZFrameRegistrationButton.iconSize = iconSize
-    self.retryZFrameRegistrationButton.enabled = True
-    self.retryZFrameRegistrationButton.toolTip = "Reset"
+    self.runZFrameRegistrationButton = self.createButton("", enabled=True, icon=Icons.apply, iconSize=iconSize,
+                                                  toolTip="Run ZFrame Registration")
+    self.retryZFrameRegistrationButton = self.createButton("", enabled=True, icon=Icons.retry, iconSize=iconSize,
+                                                  toolTip="Reset")
 
   def setupConnections(self):
     self.zFrameTemplateVolumeSelector.connect('currentNodeChanged(bool)', self.loadVolumeAndEnableEditor)
@@ -272,7 +264,7 @@ class ZFrameRegistrationWithROIWidget(ScriptedLoadableModuleWidget):
 # ZFrameRegistrationWithROILogic
 #
 
-class ZFrameRegistrationWithROILogic(ScriptedLoadableModuleLogic):
+class ZFrameRegistrationWithROILogic(ScriptedLoadableModuleLogic, ModuleLogicMixin):
   """This class should implement all the actual
   computation done by your module.  The interface
   should be such that other python code can import
@@ -363,75 +355,6 @@ class ZFrameRegistrationWithROILogic(ScriptedLoadableModuleLogic):
     self.openSourceRegistration.runRegistration(self.startIndex, self.endIndex)
     self.clearVolumeNodes()
     return True
-
-  @staticmethod
-  def getIJKForXYZ(sliceWidget, p):
-    xyz = sliceWidget.sliceView().convertRASToXYZ(p)
-    layerLogic = sliceWidget.sliceLogic().GetBackgroundLayer()
-    xyToIJK = layerLogic.GetXYToIJKTransform()
-    ijkFloat = xyToIJK.TransformDoublePoint(xyz)
-    ijk = [int(round(value)) for value in ijkFloat]
-    return ijk
-
-  @staticmethod
-  def getIslandCount(image, index):
-    imageSize = image.GetSize()
-    index = [0, 0, index]
-    extractor = sitk.ExtractImageFilter()
-    extractor.SetSize([imageSize[0], imageSize[1], 0])
-    extractor.SetIndex(index)
-    slice = extractor.Execute(image)
-    cc = sitk.ConnectedComponentImageFilter()
-    cc.Execute(slice)
-    return cc.GetObjectCount()
-
-  @staticmethod
-  def dilateMask(label, dilateValue=1.0, erodeValue=0.0, marginSize=5.0):
-    imagedata = label.GetImageData()
-    dilateErode = vtk.vtkImageDilateErode3D()
-    dilateErode.SetInputData(imagedata)
-    dilateErode.SetDilateValue(dilateValue)
-    dilateErode.SetErodeValue(erodeValue)
-    spacing = label.GetSpacing()
-    kernelSizePixel = [int(round((abs(marginSize) / spacing[componentIndex] + 1) / 2) * 2 - 1) for componentIndex in
-                       range(3)]
-    dilateErode.SetKernelSize(kernelSizePixel[0], kernelSizePixel[1], kernelSizePixel[2])
-    dilateErode.Update()
-    label.SetAndObserveImageData(dilateErode.GetOutput())
-
-  @staticmethod
-  def createCroppedVolume(inputVolume, roi):
-    cropVolumeLogic = slicer.modules.cropvolume.logic()
-    cropVolumeParameterNode = slicer.vtkMRMLCropVolumeParametersNode()
-    cropVolumeParameterNode.SetROINodeID(roi.GetID())
-    cropVolumeParameterNode.SetInputVolumeNodeID(inputVolume.GetID())
-    cropVolumeParameterNode.SetVoxelBased(True)
-    cropVolumeLogic.Apply(cropVolumeParameterNode)
-    croppedVolume = slicer.mrmlScene.GetNodeByID(cropVolumeParameterNode.GetOutputVolumeNodeID())
-    return croppedVolume
-
-  @staticmethod
-  def createMaskedVolume(inputVolume, labelVolume, outputVolumeName=None):
-    maskedVolume = slicer.vtkMRMLScalarVolumeNode()
-    if outputVolumeName:
-      maskedVolume.SetName(outputVolumeName)
-    slicer.mrmlScene.AddNode(maskedVolume)
-    params = {'InputVolume': inputVolume, 'MaskVolume': labelVolume, 'OutputVolume': maskedVolume}
-    slicer.cli.run(slicer.modules.maskscalarvolume, None, params, wait_for_completion=True)
-    return maskedVolume
-
-  @staticmethod
-  def createLabelMapFromCroppedVolume(volume, name, lowerThreshold=0, upperThreshold=2000, labelValue=1):
-    volumesLogic = slicer.modules.volumes.logic()
-    labelVolume = volumesLogic.CreateAndAddLabelVolume(volume, name)
-    imageData = labelVolume.GetImageData()
-    imageThreshold = vtk.vtkImageThreshold()
-    imageThreshold.SetInputData(imageData)
-    imageThreshold.ThresholdBetween(lowerThreshold, upperThreshold)
-    imageThreshold.SetInValue(labelValue)
-    imageThreshold.Update()
-    labelVolume.SetAndObserveImageData(imageThreshold.GetOutput())
-    return labelVolume
 
   def getROIMinCenterMaxSliceNumbers(self, coverTemplateROI):
     center = [0.0, 0.0, 0.0]

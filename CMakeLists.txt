@@ -10,7 +10,7 @@ set(EXTENSION_CONTRIBUTORS "Junichi Tokuda (SPL), Christian Herz (SPL), Simon Di
 set(EXTENSION_DESCRIPTION "This extension provides support for procedures with ZFrame Registration")
 set(EXTENSION_ICONURL "https://raw.githubusercontent.com/SlicerProstate/SlicerZFrameRegistration/master/ZFrameRegistration.png")
 set(EXTENSION_SCREENSHOTURLS "https://raw.githubusercontent.com/SlicerProstate/SlicerZFrameRegistration/master/Screenshots/1.png https://raw.githubusercontent.com/SlicerProstate/SlicerZFrameRegistration/master/Screenshots/2.png")
-set(EXTENSION_DEPENDS "")
+set(EXTENSION_DEPENDS "SlicerDevelopmentToolbox")
 #-----------------------------------------------------------------------------
 # Extension dependencies
 find_package(Slicer REQUIRED)
