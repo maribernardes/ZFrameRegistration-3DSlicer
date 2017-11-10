@@ -84,21 +84,12 @@ class ZFrameRegistrationWithROIWidget(ScriptedLoadableModuleWidget, ModuleWidget
 
   def setup(self):
     ScriptedLoadableModuleWidget.setup(self)
-    self.setupSliceWidget()
+    self.setupSliceWidgets()
     self.tag = None
     self.registrationGroupBox = qt.QGroupBox()
     self.registrationGroupBoxLayout = qt.QFormLayout()
     self.registrationGroupBox.setLayout(self.registrationGroupBoxLayout)
-    self.zFrameTemplateVolumeSelector = slicer.qMRMLNodeComboBox()
-    self.zFrameTemplateVolumeSelector.nodeTypes=["vtkMRMLScalarVolumeNode", ""]
-    self.zFrameTemplateVolumeSelector.addEnabled = False
-    self.zFrameTemplateVolumeSelector.removeEnabled = False
-    self.zFrameTemplateVolumeSelector.noneEnabled = True
-    self.zFrameTemplateVolumeSelector.showHidden = False
-    self.zFrameTemplateVolumeSelector.showChildNodeTypes=False
-    self.zFrameTemplateVolumeSelector.selectNodeUponCreation=True
-    self.zFrameTemplateVolumeSelector.toolTip="Pick algorithm input."
-    self.zFrameTemplateVolumeSelector.setMRMLScene(slicer.mrmlScene)
+    self.zFrameTemplateVolumeSelector = self.createComboBox(nodeTypes=["vtkMRMLScalarVolumeNode", ""])
     self.registrationGroupBoxLayout.addRow("ZFrame template volume: ", self.zFrameTemplateVolumeSelector)
     self.layout.addWidget(self.registrationGroupBox)
     self.layout.addStretch()
@@ -115,29 +106,17 @@ class ZFrameRegistrationWithROIWidget(ScriptedLoadableModuleWidget, ModuleWidget
     self.setupConnections()
     self.layout.addWidget(self.zFrameRegistrationManualIndexesGroupBox)
     widget = qt.QWidget()
-    rowLayout = qt.QHBoxLayout()
-    widget.setLayout(rowLayout)
-    rowLayout.addWidget(self.runZFrameRegistrationButton)
-    rowLayout.addWidget(self.retryZFrameRegistrationButton)
+    widget.setLayout(qt.QHBoxLayout())
+    widget.layout().addWidget(self.runZFrameRegistrationButton)
+    widget.layout().addWidget(self.retryZFrameRegistrationButton)
     self.layout.addWidget(widget)
     self.layout.addStretch(1)
     self.onActivation()
 
-  def setupSliceWidget(self):
-    self.redWidget = slicer.app.layoutManager().sliceWidget("Red")
-    self.redCompositeNode = self.redWidget.mrmlSliceCompositeNode()
-    self.redSliceLogic = self.redWidget.sliceLogic()
-    self.redSliceNode = self.redSliceLogic.GetSliceNode()
-
-    self.yellowWidget = slicer.app.layoutManager().sliceWidget("Yellow")
-    self.yellowCompositeNode = self.yellowWidget.mrmlSliceCompositeNode()
-    self.yellowSliceLogic = self.yellowWidget.sliceLogic()
-    self.yellowSliceNode = self.yellowSliceLogic.GetSliceNode()
-
-    self.greenWidget = slicer.app.layoutManager().sliceWidget("Green")
-    self.greenCompositeNode = self.greenWidget.mrmlSliceCompositeNode()
-    self.greenSliceLogic = self.greenWidget.sliceLogic()
-    self.greenSliceNode = self.greenSliceLogic.GetSliceNode()
+  def setupSliceWidgets(self):
+    self.createSliceWidgetClassMembers("Red")
+    self.createSliceWidgetClassMembers("Yellow")
+    self.createSliceWidgetClassMembers("Green")
 
   def setupManualIndexesGroupBox(self):
     self.zFrameRegistrationManualIndexesGroupBox = qt.QGroupBox("Use manual start/end indexes")
@@ -148,12 +127,11 @@ class ZFrameRegistrationWithROIWidget(ScriptedLoadableModuleWidget, ModuleWidget
     self.zFrameRegistrationStartIndex = qt.QSpinBox()
     self.zFrameRegistrationEndIndex = qt.QSpinBox()
     hBox = qt.QWidget()
-    rowLayout = qt.QHBoxLayout()
-    hBox.setLayout(rowLayout)
-    rowLayout.addWidget(qt.QLabel("start"))
-    rowLayout.addWidget(self.zFrameRegistrationStartIndex)
-    rowLayout.addWidget(qt.QLabel("end"))
-    rowLayout.addWidget(self.zFrameRegistrationEndIndex)
+    hBox.setLayout(qt.QHBoxLayout())
+    hBox.layout().addWidget(qt.QLabel("start"))
+    hBox.layout().addWidget(self.zFrameRegistrationStartIndex)
+    hBox.layout().addWidget(qt.QLabel("end"))
+    hBox.layout().addWidget(self.zFrameRegistrationEndIndex)
     self.zFrameRegistrationManualIndexesGroupBoxLayout.addWidget(hBox, 1, 1, qt.Qt.AlignRight)
   
   def setupActionButtons(self):
@@ -327,7 +305,7 @@ class ZFrameRegistrationWithROILogic(ScriptedLoadableModuleLogic, ModuleLogicMix
 
   def loadZFrameModel(self):
     if self.zFrameModelNode:
-      slicer.mrmlScene.RemoveNode(node)
+      slicer.mrmlScene.RemoveNode(self.zFrameModelNode)
       self.zFrameModelNode = None
     currentFilePath = os.path.dirname(os.path.realpath(__file__))
     zFrameModelPath = os.path.join(currentFilePath, "Resources", "zframe", self.ZFRAME_MODEL_PATH)
@@ -341,7 +319,7 @@ class ZFrameRegistrationWithROILogic(ScriptedLoadableModuleLogic, ModuleLogicMix
   def runZFrameOpenSourceRegistration(self, zFrameTemplateVolume, coverTemplateROI, start = None, end = None):
     self.startIndex = start
     self.endIndex = end
-    if self.startIndex == None or self.endIndex == None:
+    if self.startIndex is None or self.endIndex is None:
       self.zFrameCroppedVolume = self.createCroppedVolume(zFrameTemplateVolume, coverTemplateROI)
       self.zFrameLabelVolume = self.createLabelMapFromCroppedVolume(self.zFrameCroppedVolume, "labelmap")
       self.zFrameMaskedVolume = self.createMaskedVolume(zFrameTemplateVolume, self.zFrameLabelVolume,
@@ -497,16 +475,16 @@ class ZFrameRegistrationWithROISlicelet(qt.QWidget):
     self.buttons.layout().addWidget(self.loadSceneButton)
     self.loadSceneButton.connect("clicked()",slicer.app.ioManager().openLoadSceneDialog)
                                  
-    self.zFrameRegistrationwidget = ZFrameRegistrationWithROIWidget(self.moduleFrame)
-    self.zFrameRegistrationwidget.setup()
-    self.zFrameRegistrationwidget.reloadCollapsibleButton.visible = False
+    self.zFrameRegistrationWidget = ZFrameRegistrationWithROIWidget(self.moduleFrame)
+    self.zFrameRegistrationWidget.setup()
+    self.zFrameRegistrationWidget.reloadCollapsibleButton.visible = False
 
     # TODO: resize self.widget.parent to minimum possible width
 
     self.scrollArea = qt.QScrollArea()
-    self.scrollArea.setWidget(self.zFrameRegistrationwidget.parent)
+    self.scrollArea.setWidget(self.zFrameRegistrationWidget.parent)
     self.scrollArea.setWidgetResizable(True)
-    self.scrollArea.setMinimumWidth(self.zFrameRegistrationwidget.parent.minimumSizeHint.width())
+    self.scrollArea.setMinimumWidth(self.zFrameRegistrationWidget.parent.minimumSizeHint.width())
 
     self.splitter = qt.QSplitter()
     self.splitter.setOrientation(qt.Qt.Horizontal)
@@ -540,14 +518,14 @@ class ZFrameRegistrationWithROISlicelet(qt.QWidget):
   def onSplitterMoved(self, pos, index):
     vScroll = self.scrollArea.verticalScrollBar()
     vScrollbarWidth = 4 if not vScroll.isVisible() else vScroll.width + 4
-    if self.scrollArea.minimumWidth != self.zFrameRegistrationwidget.parent.minimumSizeHint.width() + vScrollbarWidth:
-      self.scrollArea.setMinimumWidth(self.zFrameRegistrationwidget.parent.minimumSizeHint.width() + vScrollbarWidth)
+    if self.scrollArea.minimumWidth != self.zFrameRegistrationWidget.parent.minimumSizeHint.width() + vScrollbarWidth:
+      self.scrollArea.setMinimumWidth(self.zFrameRegistrationWidget.parent.minimumSizeHint.width() + vScrollbarWidth)
 
   def onSplitterClick(self):
     if self.splitter.sizes()[0] > 0:
       self.splitter.setSizes([0, self.splitter.sizes()[1]])
     else:
-      minimumWidth = self.zFrameRegistrationwidget.parent.minimumSizeHint.width()
+      minimumWidth = self.zFrameRegistrationWidget.parent.minimumSizeHint.width()
       self.splitter.setSizes([minimumWidth, self.splitter.sizes()[1]-minimumWidth])
 
 
