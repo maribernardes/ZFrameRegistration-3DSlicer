@@ -329,7 +329,7 @@ class ZFrameRegistrationWithROILogic(ScriptedLoadableModuleLogic, ModuleLogicMix
       self.otsuOutputVolume = self.applyITKOtsuFilter(self.zFrameMaskedVolume)
       self.dilateMask(self.otsuOutputVolume)
       self.startIndex, self.endIndex = self.getStartEndWithConnectedComponents(self.otsuOutputVolume, center)
-    self.openSourceRegistration.setInputVolume(zFrameTemplateVolume)
+    self.openSourceRegistration.setInputVolume(self.zFrameMaskedVolume)
     self.openSourceRegistration.runRegistration(self.startIndex, self.endIndex)
     self.clearVolumeNodes()
     return True
