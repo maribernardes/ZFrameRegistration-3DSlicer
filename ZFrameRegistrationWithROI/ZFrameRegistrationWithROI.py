@@ -55,7 +55,7 @@ class ZFrameRegistrationWithROI(ScriptedLoadableModule):
     self.parent.categories = ["IGT"]
     self.parent.dependencies = []
     self.parent.contributors = ["Christian Herz (SPL), Longquan Chen (SPL), Junichi Tokuda (SPL), "
-                                "Simon Di Maio (SPL), Andrey Fedorov (SPL)"]
+                                "Simon Di Maio (SPL), Andrey Fedorov (SPL). Updated by Mariana Bernardes (SPL)"]
     self.parent.helpText = """
 This is an example of scripted loadable module bundled in an extension.
 It performs a simple thresholding on the input volume and optionally captures a screenshot.
@@ -64,6 +64,9 @@ It performs a simple thresholding on the input volume and optionally captures a 
     self.parent.acknowledgementText = """
 This file was originally developed by Jean-Christophe Fillion-Robin, Kitware Inc.
 and Steve Pieper, Isomics, Inc. and was partially funded by NIH grant 3P41RR013218-12S1.
+
+Update (Nov 22, 2023): Replaced AnnotationROINode (legacy) by MarkupsROINode.
+
 """  # replace with organization, grant and thanks.
 
 
@@ -90,7 +93,8 @@ class ZFrameRegistrationWithROIWidget(ScriptedLoadableModuleWidget, ModuleWidget
     ScriptedLoadableModuleWidget.setup(self)
     self.logic = ZFrameRegistrationWithROILogic()
     self.setupSliceWidgets()
-    self.annotationLogic = slicer.modules.annotations.logic()
+    # self.annotationLogic = slicer.modules.annotations.logic()
+    self.markupsLogic = slicer.modules.markups.logic()
     self.zFrameRegistrationClass = OpenSourceZFrameRegistration
     self.roiObserverTag = None
     self.coverTemplateROI = None
@@ -107,6 +111,8 @@ class ZFrameRegistrationWithROIWidget(ScriptedLoadableModuleWidget, ModuleWidget
     self.createSliceWidgetClassMembers("Green")
 
   def setupGUIAndConnections(self):
+
+    
     iconSize = qt.QSize(36, 36)
     self.inputVolumeGroupBox = qt.QGroupBox()
     self.inputVolumeGroupBoxLayout = qt.QFormLayout()
@@ -144,7 +150,7 @@ class ZFrameRegistrationWithROIWidget(ScriptedLoadableModuleWidget, ModuleWidget
     self.zFrameTemplateVolumeSelector.connect('currentNodeChanged(bool)', self.loadVolumeAndEnableEditor)
     self.retryZFrameRegistrationButton.clicked.connect(self.onRetryZFrameRegistrationButtonClicked)
     self.runZFrameRegistrationButton.clicked.connect(self.onApplyZFrameRegistrationButtonClicked)
-
+    
   def loadVolumeAndEnableEditor(self):
     zFrameTemplateVolume = self.zFrameTemplateVolumeSelector.currentNode()
     if zFrameTemplateVolume:
@@ -193,7 +199,8 @@ class ZFrameRegistrationWithROIWidget(ScriptedLoadableModuleWidget, ModuleWidget
     @vtk.calldata_type(vtk.VTK_OBJECT)
     def onNodeAdded(caller, event, calldata):
       node = calldata
-      if isinstance(node, slicer.vtkMRMLAnnotationROINode):
+      # if isinstance(node, slicer.vtkMRMLAnnotationROINode) :
+      if isinstance(node, slicer.vtkMRMLMarkupsROINode) : #Mariana
         self.removeROIObserver()
         self.coverTemplateROI = node
         self.runZFrameRegistrationButton.enabled = self.isRegistrationPossible()
@@ -210,20 +217,23 @@ class ZFrameRegistrationWithROIWidget(ScriptedLoadableModuleWidget, ModuleWidget
       self.roiObserverTag = slicer.mrmlScene.RemoveObserver(self.roiObserverTag)
 
   def setROIMode(self, mode):
-    mrmlScene = self.annotationLogic.GetMRMLScene()
-    selectionNode = mrmlScene.GetNthNodeByClass(0, "vtkMRMLSelectionNode")
-    selectionNode.SetReferenceActivePlaceNodeClassName("vtkMRMLAnnotationROINode")
     if mode == False:
-      self.annotationLogic.StopPlaceMode(False)
+      self.markupsLogic.StopPlaceMode(False)
     else:
-      self.annotationLogic.StartPlaceMode(False)
+      self.markupsLogic.StartPlaceMode(False)
+    mrmlScene = self.markupsLogic.GetMRMLScene()
+    selectionNode = mrmlScene.GetNthNodeByClass(0, "vtkMRMLSelectionNode")
+    # selectionNode.SetReferenceActivePlaceNodeClassName("vtkMRMLAnnotationROINode")
+    selectionNode.SetReferenceActivePlaceNodeClassName("vtkMRMLMarkupsROINode") # Mariana    
+
 
   def onApplyZFrameRegistrationButtonClicked(self):
     self.retryZFrameRegistrationButton.enabled = True
     zFrameTemplateVolume = self.logic.templateVolume
     try:
-      self.annotationLogic.SetAnnotationLockedUnlocked(self.coverTemplateROI.GetID())
-
+      # self.annotationLogic.SetAnnotationLockedUnlocked(self.coverTemplateROI.GetID())
+      self.markupsLogic.ToggleAllControlPointsLocked(self.coverTemplateROI) # Mariana
+      
       if not self.zFrameRegistrationManualIndexesGroupBox.checked:
         self.logic.runZFrameOpenSourceRegistration(zFrameTemplateVolume, self.coverTemplateROI)
         self.zFrameRegistrationStartIndex.value = self.logic.startIndex
@@ -440,7 +450,8 @@ class ZFrameRegistrationWithROITest(ScriptedLoadableModuleTest):
     self.delayDisplay('Finished with loading')
 
     zFrameRegistrationLogic = ZFrameRegistrationWithROILogic()
-    ROINode = slicer.vtkMRMLAnnotationROINode()
+    # ROINode = slicer.vtkMRMLAnnotationROINode()
+    ROINode = slicer.vtkMRMLMarkupsROINode() #  Mariana  
     ROINode.SetName("ROINodeForCropping")
     ROICenterPoint = [-6.91920280456543, 15.245062828063965, -101.13504791259766]
     ROINode.SetXYZ(ROICenterPoint)
