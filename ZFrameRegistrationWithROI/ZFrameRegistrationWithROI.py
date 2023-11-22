@@ -111,7 +111,15 @@ class ZFrameRegistrationWithROIWidget(ScriptedLoadableModuleWidget, ModuleWidget
     self.createSliceWidgetClassMembers("Green")
 
   def setupGUIAndConnections(self):
-
+    # Select zFrame model
+    modelGroupBox = qt.QGroupBox()
+    self.layout.addWidget(modelGroupBox)
+    modelLayout = qt.QFormLayout(modelGroupBox)    
+    self.modelFileSelector = qt.QComboBox()
+    modelPath= os.path.join(os.path.dirname(os.path.abspath(__file__)), 'Resources/zframe')
+    self.modelList = [f for f in os.listdir(modelPath) if os.path.isfile(os.path.join(modelPath, f))]
+    self.modelFileSelector.addItems(self.modelList)
+    modelLayout.addRow('zFrame Model:',self.modelFileSelector)    
     
     iconSize = qt.QSize(36, 36)
     self.inputVolumeGroupBox = qt.QGroupBox()
@@ -226,22 +234,22 @@ class ZFrameRegistrationWithROIWidget(ScriptedLoadableModuleWidget, ModuleWidget
     # selectionNode.SetReferenceActivePlaceNodeClassName("vtkMRMLAnnotationROINode")
     selectionNode.SetReferenceActivePlaceNodeClassName("vtkMRMLMarkupsROINode") # Mariana    
 
-
   def onApplyZFrameRegistrationButtonClicked(self):
     self.retryZFrameRegistrationButton.enabled = True
     zFrameTemplateVolume = self.logic.templateVolume
+    zFrameModelName = self.modelFileSelector.currentText
     try:
       # self.annotationLogic.SetAnnotationLockedUnlocked(self.coverTemplateROI.GetID())
       self.markupsLogic.ToggleAllControlPointsLocked(self.coverTemplateROI) # Mariana
       
       if not self.zFrameRegistrationManualIndexesGroupBox.checked:
-        self.logic.runZFrameOpenSourceRegistration(zFrameTemplateVolume, self.coverTemplateROI)
+        self.logic.runZFrameOpenSourceRegistration(zFrameModelName, zFrameTemplateVolume, self.coverTemplateROI)
         self.zFrameRegistrationStartIndex.value = self.logic.startIndex
         self.zFrameRegistrationEndIndex.value = self.logic.endIndex
       else:
         startIndex = self.zFrameRegistrationStartIndex.value
         endIndex = self.zFrameRegistrationEndIndex.value
-        self.logic.runZFrameOpenSourceRegistration(zFrameTemplateVolume, self.coverTemplateROI, start=startIndex,
+        self.logic.runZFrameOpenSourceRegistration(zFrameModelName, zFrameTemplateVolume, self.coverTemplateROI, start=startIndex,
                                                    end=endIndex)
       self.setBackgroundAndForegroundIDs(foregroundVolumeID=None, backgroundVolumeID=self.logic.templateVolume.GetID())
       self.logic.zFrameModelNode.SetAndObserveTransformNodeID(self.logic.openSourceRegistration.outputTransform.GetID())
@@ -269,8 +277,8 @@ class ZFrameRegistrationWithROILogic(ScriptedLoadableModuleLogic, ModuleLogicMix
   https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
   """
 
-  ZFRAME_MODEL_PATH = 'zframe-model.vtk'
-  ZFRAME_MODEL_NAME = 'ZFrameModel'
+  # ZFRAME_MODEL_PATH = 'zframe-model.vtk'
+  # ZFRAME_MODEL_NAME = 'ZFrameModel'
 
   def __init__(self):
     ScriptedLoadableModuleLogic.__init__(self)
@@ -291,7 +299,6 @@ class ZFrameRegistrationWithROILogic(ScriptedLoadableModuleLogic, ModuleLogicMix
 
   def resetAndInitializeData(self):
     self.cleanup()
-    self.loadZFrameModel()
     self.startIndex = None
     self.endIndex = None
 
@@ -324,21 +331,22 @@ class ZFrameRegistrationWithROILogic(ScriptedLoadableModuleLogic, ModuleLogicMix
       slicer.mrmlScene.RemoveNode(self.openSourceRegistration.outputTransform)
       self.openSourceRegistration.outputTransform = None
 
-  def loadZFrameModel(self):
+  def loadZFrameModel(self, zFrameModelName):
     if self.zFrameModelNode:
       slicer.mrmlScene.RemoveNode(self.zFrameModelNode)
       self.zFrameModelNode = None
     currentFilePath = os.path.dirname(os.path.realpath(__file__))
-    zFrameModelPath = os.path.join(currentFilePath, "Resources", "zframe", self.ZFRAME_MODEL_PATH)
+    zFrameModelPath = os.path.join(currentFilePath, "Resources", "zframe", zFrameModelName)
     _, self.zFrameModelNode = slicer.util.loadModel(zFrameModelPath, returnNode=True)
-    self.zFrameModelNode.SetName(self.ZFRAME_MODEL_NAME)
+    self.zFrameModelNode.SetName('ZFrameModel')
     modelDisplayNode = self.zFrameModelNode.GetDisplayNode()
     modelDisplayNode.SetColor(1, 1, 0)
     self.zFrameModelNode.SetDisplayVisibility(False)
 
-  def runZFrameOpenSourceRegistration(self, zFrameTemplateVolume, coverTemplateROI, start=None, end=None):
+  def runZFrameOpenSourceRegistration(self, zFrameModelName, zFrameTemplateVolume, coverTemplateROI, start=None, end=None):
     self.startIndex = start
     self.endIndex = end
+    self.loadZFrameModel(zFrameModelName) # Load selected zFrame Model
     self.zFrameCroppedVolume = self.createCroppedVolume(zFrameTemplateVolume, coverTemplateROI)
     self.zFrameLabelVolume = self.createLabelMapFromCroppedVolume(self.zFrameCroppedVolume, "labelmap")
     self.zFrameMaskedVolume = self.createMaskedVolume(zFrameTemplateVolume, self.zFrameLabelVolume,
@@ -410,7 +418,7 @@ class ZFrameRegistrationWithROITest(ScriptedLoadableModuleTest):
                        -0.009774406649458021, 0.9998660159742193, -0.013128544923338871, -18.918600331582244,
                        0.006421595844729844, 0.013191666276940213, 0.999892377445857, 102.1792443094631,
                        0.0, 0.0, 0.0, 1.0]
-
+  
   def setUp(self):
     """ Do whatever is needed to reset the state - typically a scene clear will be enough.
     """
@@ -445,6 +453,7 @@ class ZFrameRegistrationWithROITest(ScriptedLoadableModuleTest):
     currentFilePath = os.path.dirname(os.path.realpath(__file__))
     imageDataPath = os.path.join(os.path.abspath(os.path.join(currentFilePath, os.pardir)), "ZFrameRegistration",
                                  "Data", "Input", "CoverTemplateMasked.nrrd")
+    print(imageDataPath)
     _, imageDataNode = slicer.util.loadVolume(imageDataPath, returnNode=True)
     slicer.app.processEvents()
     self.delayDisplay('Finished with loading')
@@ -460,7 +469,7 @@ class ZFrameRegistrationWithROITest(ScriptedLoadableModuleTest):
     slicer.mrmlScene.AddNode(ROINode)
     slicer.app.processEvents()
 
-    zFrameRegistrationLogic.runZFrameOpenSourceRegistration(imageDataNode, coverTemplateROI=ROINode)
+    zFrameRegistrationLogic.runZFrameOpenSourceRegistration('zframe_original_vertical.vtk', imageDataNode, coverTemplateROI=ROINode)
     slicer.app.processEvents()
     transformNode = zFrameRegistrationLogic.openSourceRegistration.outputTransform
     transformMatrix = transformNode.GetTransformFromParent().GetMatrix()
