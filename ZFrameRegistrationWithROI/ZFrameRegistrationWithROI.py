@@ -405,8 +405,9 @@ class ZFrameRegistrationWithROILogic(ScriptedLoadableModuleLogic, ModuleLogicMix
     self.otsuFilter.SetInsideValue(0)
     self.otsuFilter.SetOutsideValue(1)
     otsuITKVolume = self.otsuFilter.Execute(inputVolume)
-    return sitkUtils.PushToSlicer(otsuITKVolume, "otsuITKVolume", 0, True)
-
+    # return sitkUtils.PushToSlicer(otsuITKVolume, "otsuITKVolume", 0, True)
+    return sitkUtils.PushVolumeToSlicer(otsuITKVolume, name="otsuITKVolume") # Mariana fix
+    
 
 class ZFrameRegistrationWithROITest(ScriptedLoadableModuleTest):
   """
