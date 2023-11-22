@@ -10,24 +10,26 @@ The registration of the intra-procedural image frame of reference with the trans
 ### Usage:
 #### With 3D slicer main window.
 1. After install the extension, the user need to switch to the module `ZFrameRegistrationWithROI`.
-
-2. Load a nrrd file into 3D Slicer by clicking the Slicer `Add Data` button.
+2. Select the desired zFrame model from the list. The module provides two zFrame model options:
+* original (vertical) version
+* modified (horizontal) version
+3. Load a nrrd file into 3D Slicer by clicking the Slicer `Add Data` button.
 ![Alt text](Screenshots/AddData.png?raw=true "Add Data")
 
-3. Choose the volume in the `Zframe template volume` selector.
+4. Choose the volume in the `Zframe template volume` selector.
 ![Alt text](Screenshots/SelectVolume.png?raw=true "Select Volume")
 
-4. The ROI definition will be automatically triggered if the volume is selected or changed, user needs to define ROI by clicking two points in the slice widget.
+5. The ROI definition will be automatically triggered if the volume is selected or changed, user needs to define ROI by clicking two points in the slice widget.
 ![Alt text](Screenshots/DefineROI.png?raw=true "Define ROI")
 
-5. Press the run algorithm button, the registration will be performed and the zframe model will be shown both in the slice widgets and the 3D view widget.
+6. Press the run algorithm button, the registration will be performed and the zframe model will be shown both in the slice widgets and the 3D view widget.
 ![Alt text](Screenshots/RunAlgorithm.png?raw=true "Run Algorithm")
 
-6. If the result is not good, click the "Reset" button or user the manual start/end indexes. If the "Reset" button is clicked, the user will be prompt to do the ROI definition as in step 3.
+7. If the result is not good, click the "Reset" button or user the manual start/end indexes. If the "Reset" button is clicked, the user will be prompt to do the ROI definition as in step 3.
    Afterwards, press the run algorithm button again.
 ![Alt text](Screenshots/Retry.png?raw=true "Retry") ![Alt text](Screenshots/RetryManualIndexes.png?raw=true "RetryManualIndexes")
 
-7. When the result looks good, the zframe will align very well with the fiducial artifacts on the slice widgets and the 3D view window.
+8. When the result looks good, the zframe will align very well with the fiducial artifacts on the slice widgets and the 3D view window.
 ![Alt text](Screenshots/Validation.png?raw=true "Validation")
 
 #### Slicelet mode
