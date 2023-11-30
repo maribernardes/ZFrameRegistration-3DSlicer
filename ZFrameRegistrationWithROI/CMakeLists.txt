@@ -8,7 +8,8 @@ set(MODULE_PYTHON_SCRIPTS
 
 set(MODULE_PYTHON_RESOURCES
   Resources/Icons/${MODULE_NAME}.png
-  Resources/zframe/zframe-model.vtk
+  Resources/zframe/zframe_horizontal.vtk
+  Resources/zframe/zframe_original_vertical.vtk
   ../ZFrameRegistration/Data/Input/CoverTemplateMasked.nrrd
   )
 
