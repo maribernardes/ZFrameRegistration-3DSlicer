@@ -188,7 +188,8 @@ class ZFrameRegistrationWithROIWidget(ScriptedLoadableModuleWidget, ModuleWidget
     self.runZFrameRegistrationButton.enabled = False
     self.retryZFrameRegistrationButton.enabled = False
     if self.logic.zFrameModelNode:
-      self.logic.zFrameModelNode.GetDisplayNode().SetSliceIntersectionVisibility(False)
+      # self.logic.zFrameModelNode.GetDisplayNode().SetSliceIntersectionVisibility(False)
+      self.logic.zFrameModelNode.GetDisplayNode().SetVisibility2D(False)        # Updated by Mariana: SetSliceIntersectionVisibility is deprecated
       self.logic.zFrameModelNode.SetDisplayVisibility(False)
     slicer.app.layoutManager().setLayout(slicer.vtkMRMLLayoutNode.SlicerLayoutFourUpView)
 
@@ -253,7 +254,8 @@ class ZFrameRegistrationWithROIWidget(ScriptedLoadableModuleWidget, ModuleWidget
                                                    end=endIndex)
       self.setBackgroundAndForegroundIDs(foregroundVolumeID=None, backgroundVolumeID=self.logic.templateVolume.GetID())
       self.logic.zFrameModelNode.SetAndObserveTransformNodeID(self.logic.openSourceRegistration.outputTransform.GetID())
-      self.logic.zFrameModelNode.GetDisplayNode().SetSliceIntersectionVisibility(True)
+      # self.logic.zFrameModelNode.GetDisplayNode().SetSliceIntersectionVisibility(True)
+      self.logic.zFrameModelNode.GetDisplayNode().SetVisibility2D(True)         # Updated by Mariana: SetSliceIntersectionVisibility is deprecated
       self.logic.zFrameModelNode.SetDisplayVisibility(True)
     except AttributeError as exc:
       slicer.util.errorDisplay("An error occurred. For further information click 'Show Details...'",
@@ -337,7 +339,8 @@ class ZFrameRegistrationWithROILogic(ScriptedLoadableModuleLogic, ModuleLogicMix
       self.zFrameModelNode = None
     currentFilePath = os.path.dirname(os.path.realpath(__file__))
     zFrameModelPath = os.path.join(currentFilePath, "Resources", "zframe", zFrameModelName)
-    _, self.zFrameModelNode = slicer.util.loadModel(zFrameModelPath, returnNode=True)
+    #_, self.zFrameModelNode = slicer.util.loadModel(zFrameModelPath, returnNode=True) #Updated by Mariana: returnNode argument is deprecated
+    self.zFrameModelNode = slicer.util.loadModel(zFrameModelPath)
     self.zFrameModelNode.SetName('ZFrameModel')
     modelDisplayNode = self.zFrameModelNode.GetDisplayNode()
     modelDisplayNode.SetColor(1, 1, 0)
@@ -455,7 +458,8 @@ class ZFrameRegistrationWithROITest(ScriptedLoadableModuleTest):
     imageDataPath = os.path.join(os.path.abspath(os.path.join(currentFilePath, os.pardir)), "ZFrameRegistration",
                                  "Data", "Input", "CoverTemplateMasked.nrrd")
     print(imageDataPath)
-    _, imageDataNode = slicer.util.loadVolume(imageDataPath, returnNode=True)
+    #_, imageDataNode = slicer.util.loadVolume(imageDataPath, returnNode=True) #Updated by Mariana: returnNode argument is deprecated
+    imageDataNode = slicer.util.loadVolume(imageDataPath)
     slicer.app.processEvents()
     self.delayDisplay('Finished with loading')
 
